@@ -6,32 +6,43 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Client.Views.MainView"
              x:DataType="vm:MainViewModel">
+	
   <Design.DataContext>
     <!-- This only sets the DataContext for the previewer in an IDE,
          to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
     <vm:MainViewModel />
   </Design.DataContext>
-	<Grid ShowGridLines="True"
-		  Margin="60 60 60 60"
-		  ColumnDefinitions="*, Auto,*"
+	
+	<Grid RowDefinitions="Auto,Auto">
+		<Rectangle Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="50"  Fill="#5BD2F0"></Rectangle>
+	<Grid Grid.Row="1" ShowGridLines="False"
+		  Margin="0 30"
+		  ColumnDefinitions="*,*,*"
 		  RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-
-		<Label Grid.Row="1" Grid.Column="0" FontSize="20" >IncomeMessage</Label>
-		<TextBox Grid.Row="1" Grid.Column="1" MinWidth="250" MinHeight="100"
-				IsReadOnly="True" Name="textBox3"></TextBox>
-		<Label Grid.Row="2" Grid.Column="0" FontSize="20" >ConnectStatusLog</Label>
-		<TextBox Grid.Row="2" Grid.Column="1" MinWidth="250" MinHeight="100"
-				IsReadOnly="True" Name="textBox1" ></TextBox>
-		<Label Grid.Row="3" Grid.Column="0" FontSize="20" >Message</Label>
-		<TextBox Grid.Row="3" Grid.Column="1" MinWidth="250" MinHeight="50"
-				 Name="textBox2" KeyDown="MessageEnterPressed"></TextBox>
+		<Label Grid.Row="1" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top" >Income Message</Label>
+		<TextBox Margin="0 5" Grid.Row="1" Grid.Column="1" MinWidth="250" MaxWidth="800" Height="100"
+				IsReadOnly="True" Focusable="False" Name="textBox3" TextAlignment="Left" TextWrapping="Wrap" BorderThickness="0" Background="White"></TextBox>
 		
-		<Button Grid.Row="4" Grid.Column="1"
+		<Label Grid.Row="2" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top">Logs</Label>
+		
+		<TextBox Margin="0 5" Grid.Row="2" Grid.Column="1" MinWidth="250" MaxWidth="800" Height="100"
+				IsReadOnly="True" Focusable="False" Name="textBox1" TextAlignment="Left" TextWrapping="Wrap"
+				 BorderThickness="0" Background="White"></TextBox>
+		
+		<Label Grid.Row="3" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top" >Message</Label>
+		
+		<TextBox Margin="0 5" Grid.Row="3" Grid.Column="1" MinWidth="250" MaxWidth="800" Height="50"
+				 Name="textBox2" TextAlignment="Left" 
+				 TextWrapping="Wrap" KeyDown="MessageEnterPressed" 
+				 Background="White" BorderThickness="0"></TextBox>
+		
+		<Button Margin="20" Grid.Row="4" Grid.Column="1"
 				HorizontalAlignment="Center" HorizontalContentAlignment="Center"
 				VerticalAlignment="Center" VerticalContentAlignment="Center"
-				Height="50" FontSize="25" FontWeight="Bold"
-				Width="200" Background=""
+				Height="50" FontSize="24" FontWeight="Bold" 
+				Width="200" Background="#5BF0BD"
 				Click="ConnectButtonClicked" Content="Connect"/>
+	</Grid>
 	</Grid>
 
 </UserControl>
