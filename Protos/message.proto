@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option csharp_namespace = "TCPChat.Messages";
+
+
+message ChatMessage {
+    string clientId = 1;
+    string content = 2;
+}
+
+message ErrorMessage {
+    string error = 1;
+}
+
+message ServerMessage {
+    oneof message {
+        ChatMessage chatMessage = 1;
+        ErrorMessage errorMessage = 2;
+    }
+}
