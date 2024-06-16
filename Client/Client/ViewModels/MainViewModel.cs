@@ -1,5 +1,8 @@
 ﻿using Avalonia.Input;
+using ReactiveUI;
+using System;
 using System.Diagnostics;
+using System.Reactive;
 using TCPChat.Messages;
 
 namespace Client.ViewModels;
@@ -14,19 +17,33 @@ public class MainViewModel : ViewModelBase
     public string TextBox1
     {
         get { return textBox1; }
-        set { textBox1 = value; }
+        set { this.RaiseAndSetIfChanged(ref textBox1, value); }
     }
-    public string TextBox2 { get { return textBox2; } set { textBox2 = value; } }
-    public string TextBox3 { get => textBox3; set => textBox3 = value; }
+    public string TextBox2
+    {
+        get { return textBox2; }
+        set { this.RaiseAndSetIfChanged(ref textBox2, value); }
+    }
+    public string TextBox3
+    {
+        get { return textBox3; }
+        set { this.RaiseAndSetIfChanged(ref textBox3, value); }
+    }
     public MainViewModel()
     {
         _client = new Client();
         _client.MessageReceived += UpdateTextBox;
+        _client.ErrorMessageRised += UpdateErrorTextBox;
     }
 
-    private void UpdateTextBox(Message message)
+
+    private void UpdateErrorTextBox(ErrorMessage message)
     {
-        textBox3 += $"{message.ClientId}: {message.Content}";
+        TextBox1 += $"{message.Error}\n";
+    }
+    private void UpdateTextBox(ChatMessage message)
+    {
+        TextBox3 += $"{message.ClientId}: {message.Content}\n";
     }
 
     public async void ConnectButtonClicked()
@@ -35,13 +52,11 @@ public class MainViewModel : ViewModelBase
         await _client.ConnectToServerAsync();
     }
 
-    public async void MessageEnterPressed(object source, KeyEventArgs e)
+    public async void OnEnterKeyPressed()
     {
-        if (e.Key == Key.Enter)
-        {
-            await _client.SendMessageAsync(TextBox2);
-
-        }
+        string textToSend = TextBox2;
+        TextBox2 = string.Empty;
+        await _client.SendMessageAsync(textToSend);
     }
 
 }

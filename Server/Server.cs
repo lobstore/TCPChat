@@ -10,7 +10,7 @@ namespace Server
         private TcpListener tcpListener;
         private ConcurrentDictionary<Guid, TcpClient> clients = new();
         private CancellationTokenSource cancellationTokenSource = new();
-        private readonly ConcurrentQueue<Message> messageQueue = new();
+        private readonly ConcurrentQueue<ServerMessage> messageQueue = new();
         private Timer? timer;
 
         public Server(int port)
@@ -41,6 +41,7 @@ namespace Server
             }
             catch (Exception ex)
             {
+                
                 Console.WriteLine($"Server error: {ex.Message}");
             }
             finally
@@ -56,9 +57,12 @@ namespace Server
                 NetworkStream stream = client.GetStream();
                 while (!cancellationTokenSource.Token.IsCancellationRequested)
                 {
-                    var message = await Task.Run(() => Message.Parser.ParseDelimitedFrom(stream));
-                    Console.WriteLine($"Received from {message.ClientId}: {message.Content}");
-                    messageQueue.Enqueue(message);
+                    var serverMessage = new ServerMessage();
+                    var message = await Task.Run(() => ServerMessage.Parser.ParseDelimitedFrom(stream));
+                    serverMessage.ChatMessage = message.ChatMessage;
+                    Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
+                    serverMessage.ChatMessage.ClientId = "Server";
+                    messageQueue.Enqueue(serverMessage);
 
 
                     if (messageQueue.TryDequeue(out var dequeuedMessage))
@@ -81,12 +85,14 @@ namespace Server
         {
             try
             {
-                var clientIdMessage = new Message
+                var serverMessage = new ServerMessage();
+                var clientIdMessage = new ChatMessage
                 {
-                    ClientId = clientId.ToString(),
-                    Content = $"Your client ID is: {clientId}"
+                    ClientId = "Server",
+                    Content = $"{clientId}"
                 };
-                await Task.Run(() => clientIdMessage.WriteDelimitedTo(stream));
+                serverMessage.ChatMessage = clientIdMessage;
+                await Task.Run(() => serverMessage.WriteDelimitedTo(stream));
             }
             catch (Exception)
             {
@@ -106,13 +112,15 @@ namespace Server
             {
                 try
                 {
+                    var serverMessage = new ServerMessage();
                     NetworkStream stream = client.GetStream();
-                    var timeMessage = new Message
+                    var timeMessage = new ChatMessage
                     {
                         ClientId = "Server",
                         Content = DateTime.Now.ToString("o") // Отправка текущего времени в формате ISO 8601
                     };
-                    timeMessage.WriteDelimitedTo(stream);
+                    serverMessage.ChatMessage = timeMessage;
+                    serverMessage.WriteDelimitedTo(stream);
                 }
                 catch (Exception ex)
                 {
@@ -126,18 +134,20 @@ namespace Server
         {
             cancellationTokenSource.Cancel();
             timer?.Dispose();
-            var lastMessage = new Message
+            var lastMessage = new ErrorMessage
             {
-                ClientId = "Server",
-                Content = $"The server is unavailable, the connection is terminated"
+                Error = $"The server is unavailable, the connection is terminated"
             };
+            var serverMessage = new ServerMessage();
+            serverMessage.ErrorMessage = lastMessage;
             foreach (var client in clients.Values)
             {
-                lastMessage.WriteDelimitedTo(client.GetStream());
+                serverMessage.WriteDelimitedTo(client.GetStream());
                 client.Close();
             }
             tcpListener.Stop();
         }
+
     }
 
 }

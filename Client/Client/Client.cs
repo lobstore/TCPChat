@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TCPChat.Messages;
 using Google.Protobuf;
+using System.Diagnostics;
 namespace Client
 {
     internal class Client
@@ -16,8 +17,8 @@ namespace Client
         private TcpClient? tcpServerConnection;
         private NetworkStream? stream;
         private string? clientId;
-        public event Action<Message>? MessageReceived;
-        public event Action<string>? ErrorMessageRised;
+        public event Action<ChatMessage>? MessageReceived;
+        public event Action<ErrorMessage>? ErrorMessageRised;
         
         /// <summary>
         /// Create new connection if there is none
@@ -35,12 +36,12 @@ namespace Client
                 {
                     await tcpServerConnection.ConnectAsync(ip, port);
                     stream = tcpServerConnection.GetStream();
-                    await ReceiveClientIdAsync(tcpServerConnection);
+                    await ReceiveClientIdAsync();
                     await Task.Run(() => ReceiveMessagesAsync());
                 }
                 catch (Exception e)
                 {
-                    ErrorMessageRised?.Invoke(e.Message);
+                    await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = e.Message }));
                 }
 
             }
@@ -50,20 +51,21 @@ namespace Client
         {
             if (stream == null || clientId == null)
             {
-                ErrorMessageRised?.Invoke($"Client is not connected\n");
+                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"Client is not connected\n" }));
                 return;
             }
 
             if (!string.IsNullOrEmpty(textToSend))
             {
 
-                var message = new Message
+                var message = new ChatMessage
                 {
                     ClientId = clientId.ToString(),
                     Content = textToSend
                 };
-
-                await Task.Run(() => message.WriteDelimitedTo(stream));
+                var serverMessage = new ServerMessage();
+                serverMessage.ChatMessage = message;
+                await Task.Run(() => serverMessage.WriteDelimitedTo(stream));
             }
         }
 
@@ -79,36 +81,42 @@ namespace Client
                 while (true)
                 {
 
-                    var response = await Task.Run(() => Message.Parser.ParseDelimitedFrom(stream));
-
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        MessageReceived?.Invoke(response);
-                    });
+                    var response = await Task.Run(() => ServerMessage.Parser.ParseDelimitedFrom(stream));
+                    await ProcessIncomeMessage(response);
 
                 }
             }
             catch (IOException e)
             {
-                ErrorMessageRised?.Invoke($"{e.Message}");
+                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}" }));
             }
         }
-        private async Task ReceiveClientIdAsync(TcpClient tcpServerConnection)
+        private async Task ReceiveClientIdAsync()
         {
             try
             {
-                var clientIdMessage = await Task.Run(() => Message.Parser.ParseDelimitedFrom(stream));
-                Console.WriteLine(clientIdMessage.Content);
-
-                clientId = clientIdMessage.ClientId;
-                MessageReceived?.Invoke(clientIdMessage);
+                var clientIdMessage = await Task.Run(() => ServerMessage.Parser.ParseDelimitedFrom(stream));
+                clientId = clientIdMessage.ChatMessage.Content;
+                await ProcessIncomeMessage(clientIdMessage);
             }
             catch (Exception e)
             {
-                ErrorMessageRised?.Invoke($"{e.Message}\n");
+                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}\n" }));
             }
         }
 
+        private async Task ProcessIncomeMessage(ServerMessage message)
+        {
+            if (message.ChatMessage != null)
+            {
+                await Task.Run(() => MessageReceived?.Invoke(message.ChatMessage));
+
+            }
+            else if (message.ErrorMessage != null)
+            {
+                await Task.Run(() => ErrorMessageRised?.Invoke(message.ErrorMessage));
+            }
+        }
     }
 
 
