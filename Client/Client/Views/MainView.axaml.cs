@@ -8,7 +8,6 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
-
     }
 
     public async void MessageEnterPressed(object? source, KeyEventArgs e)

@@ -36,7 +36,6 @@ public class MainViewModel : ViewModelBase
         _client.ErrorMessageRised += UpdateErrorTextBox;
     }
 
-
     private async void UpdateErrorTextBox(ErrorMessage message)
     {
         await Task.Run(() => { TextBox1 += $"{message.Error}\n"; });

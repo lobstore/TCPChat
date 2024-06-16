@@ -18,22 +18,13 @@ namespace Client
         public event Action<ChatMessage>? MessageReceived;
         public event Action<ErrorMessage>? ErrorMessageRised;
 
-        /// <summary>
-        /// Create new connection if there is none
-        /// Wait for client id and run receiving
-        /// </summary>
-        /// <param name="ip">127.0.0.1 by default</param>
-        /// <param name="port">30015 by default</param>
-        /// <returns></returns>
-        public async Task ConnectToServerAsync(string ip = "192.168.0.3", int port = 30015)
+        public async Task ConnectToServerAsync(string ip = "127.0.0.1", int port = 30015)
         {
-            Debug.WriteLine("asdaw");
             isRunning = true;
             while (isRunning)
                 if (tcpServerConnection == null || !tcpServerConnection.Connected)
                 {
                     cancellationTokenSource = new CancellationTokenSource();
-                    Debug.WriteLine("aa");
                     tcpServerConnection = new TcpClient();
                     try
                     {
@@ -59,7 +50,7 @@ namespace Client
 
             if (stream == null || clientId == null || tcpServerConnection==null || !tcpServerConnection.Connected)
             {
-                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"Client is not connected\n" }));
+                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"Client is not connected" }));
                 return;
             }
             try
@@ -77,10 +68,10 @@ namespace Client
                     await Task.Run(() => serverMessage.WriteDelimitedTo(stream));
                 }
             }
-            catch (Exception)
+            catch (Exception e )
             {
+                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}" }));
 
-              
             }
             
         }
