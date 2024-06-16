@@ -1,8 +1,8 @@
-﻿using Avalonia.Input;
+﻿using Avalonia.Threading;
 using ReactiveUI;
-using System;
 using System.Diagnostics;
-using System.Reactive;
+using System.Threading;
+using System.Threading.Tasks;
 using TCPChat.Messages;
 
 namespace Client.ViewModels;
@@ -27,7 +27,7 @@ public class MainViewModel : ViewModelBase
     public string TextBox3
     {
         get { return textBox3; }
-        set { this.RaiseAndSetIfChanged(ref textBox3, value); }
+        set { this.RaiseAndSetIfChanged(ref textBox3, value);}
     }
     public MainViewModel()
     {
@@ -37,13 +37,13 @@ public class MainViewModel : ViewModelBase
     }
 
 
-    private void UpdateErrorTextBox(ErrorMessage message)
+    private async void UpdateErrorTextBox(ErrorMessage message)
     {
-        TextBox1 += $"{message.Error}\n";
+        await Task.Run(() => { TextBox1 += $"{message.Error}\n"; });
     }
-    private void UpdateTextBox(ChatMessage message)
+    private async void UpdateTextBox(ChatMessage message)
     {
-        TextBox3 += $"{message.ClientId}: {message.Content}\n";
+       await Task.Run(() => { TextBox3 += $"{message.ClientId}: {message.Content}\n"; });
     }
 
     public async void ConnectButtonClicked()
@@ -52,7 +52,7 @@ public class MainViewModel : ViewModelBase
         await _client.ConnectToServerAsync();
     }
 
-    public async void OnEnterKeyPressed()
+    public async Task OnEnterKeyPressed()
     {
         string textToSend = TextBox2;
         TextBox2 = string.Empty;

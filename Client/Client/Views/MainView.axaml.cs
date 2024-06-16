@@ -1,7 +1,6 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Input;
 using Client.ViewModels;
-using System.Diagnostics;
 namespace Client.Views;
 
 public partial class MainView : UserControl
@@ -12,8 +11,7 @@ public partial class MainView : UserControl
 
     }
 
-
-    public void MessageEnterPressed(object? source, KeyEventArgs e)
+    public async void MessageEnterPressed(object? source, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
@@ -22,7 +20,7 @@ public partial class MainView : UserControl
                 var viewModel = DataContext as MainViewModel;
                 if (viewModel != null)
                 {
-                    viewModel.OnEnterKeyPressed();
+                    await viewModel.OnEnterKeyPressed();
                 }
             }
 

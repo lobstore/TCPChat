@@ -7,17 +7,17 @@ namespace Server
 {
     public class Server
     {
+        #region SetupVariables
         private TcpListener tcpListener;
         private ConcurrentDictionary<Guid, TcpClient> clients = new();
         private CancellationTokenSource cancellationTokenSource = new();
         private readonly ConcurrentQueue<ServerMessage> messageQueue = new();
         private Timer? timer;
-
+        #endregion 
         public Server(int port)
         {
             tcpListener = new TcpListener(IPAddress.Any, port);
-
-
+            
         }
 
         public async Task Start()
@@ -34,14 +34,14 @@ namespace Server
                     Guid clientId = Guid.NewGuid();
                     clients.TryAdd(clientId, tcpClient);
                     Console.WriteLine($"Client connected: {tcpClient.Client.RemoteEndPoint} with id {clientId}");
-                    await SendClientIdToClient(tcpClient.GetStream(), clientId);
-                    Task.Run(() => HandleClient(tcpClient, clientId), cancellationTokenSource.Token);
 
+                    Thread clientThread = new Thread(() => { HandleClient(clients[clientId], clientId); });
+                    clientThread.Start();
                 }
             }
             catch (Exception ex)
             {
-                
+
                 Console.WriteLine($"Server error: {ex.Message}");
             }
             finally
@@ -50,15 +50,16 @@ namespace Server
             }
         }
 
-        private async Task HandleClient(TcpClient client, Guid clientID)
+        private void HandleClient(TcpClient client, Guid clientID)
         {
             try
             {
                 NetworkStream stream = client.GetStream();
+                SendClientIdToClient(stream, clientID);
                 while (!cancellationTokenSource.Token.IsCancellationRequested)
                 {
                     var serverMessage = new ServerMessage();
-                    var message = await Task.Run(() => ServerMessage.Parser.ParseDelimitedFrom(stream));
+                    var message = ServerMessage.Parser.ParseDelimitedFrom(stream);
                     serverMessage.ChatMessage = message.ChatMessage;
                     Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
                     serverMessage.ChatMessage.ClientId = "Server";
@@ -67,7 +68,7 @@ namespace Server
 
                     if (messageQueue.TryDequeue(out var dequeuedMessage))
                     {
-                        await Task.Run(() => dequeuedMessage.WriteDelimitedTo(stream));
+                        dequeuedMessage.WriteDelimitedTo(stream);
                     }
                 }
             }
@@ -81,7 +82,7 @@ namespace Server
                 clients.TryRemove(clientID, out _);
             }
         }
-        private async Task SendClientIdToClient(NetworkStream stream, Guid clientId)
+        private void SendClientIdToClient(NetworkStream stream, Guid clientId)
         {
             try
             {
@@ -92,7 +93,7 @@ namespace Server
                     Content = $"{clientId}"
                 };
                 serverMessage.ChatMessage = clientIdMessage;
-                await Task.Run(() => serverMessage.WriteDelimitedTo(stream));
+                serverMessage.WriteDelimitedTo(stream);
             }
             catch (Exception)
             {
@@ -117,7 +118,7 @@ namespace Server
                     var timeMessage = new ChatMessage
                     {
                         ClientId = "Server",
-                        Content = DateTime.Now.ToString("o") // Отправка текущего времени в формате ISO 8601
+                        Content = DateTime.Now.ToString("o") 
                     };
                     serverMessage.ChatMessage = timeMessage;
                     serverMessage.WriteDelimitedTo(stream);
