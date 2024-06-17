@@ -17,7 +17,6 @@ namespace Server
         public Server(int port)
         {
             tcpListener = new TcpListener(IPAddress.Any, port);
-            
         }
 
         public async Task Start()

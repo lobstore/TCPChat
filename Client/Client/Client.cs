@@ -30,6 +30,7 @@ namespace Client
                     {
                         await tcpServerConnection.ConnectAsync(ip, port);
                         stream = tcpServerConnection.GetStream();
+                        await SetKeepAlive();
                         await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = "Connected..." }));
                         Task checkConnection = CheckConnection();
                         await ReceiveClientIdAsync();
@@ -43,6 +44,29 @@ namespace Client
                     }
                 }
                 else { break; }
+        }
+
+        private async Task SetKeepAlive()
+        {
+            try
+            {
+                await Task.Run(() =>
+                {
+                    stream.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                    stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 120);
+                    stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 2);
+                    stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 3);
+                });
+
+
+            }
+            catch (Exception)
+            {
+
+       
+            }
+
+
         }
 
         public async Task SendMessageAsync(string? textToSend)
