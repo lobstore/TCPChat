@@ -81,31 +81,10 @@ namespace Server
                     });
 
                     Thread writeThread = new Thread(() =>
-                        {
-                            try
-                            {
+                    {
+                        WriteMessage(clientID, messageQueue, stream);
 
-                                while (!messageQueue.IsEmpty)
-                                {
-
-                                    if (messageQueue.TryDequeue(out var dequeuedMessage))
-                                    {
-
-                                        lock (syncLock)
-                                        {
-                                            dequeuedMessage.WriteDelimitedTo(stream);
-
-                                        }
-                                    }
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                Console.WriteLine($"{e.Message} Client ID: {clientID}");
-                                cancellationTokenSource.Cancel();
-                            }
-
-                        });
+                    });
                     writeThread.Start();
                     readThread.Start();
                     readThread.Join();
@@ -122,6 +101,32 @@ namespace Server
 
                 client.Close();
                 clients.TryRemove(clientID, out _);
+            }
+        }
+
+        private void WriteMessage(Guid clientID, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream)
+        {
+            try
+            {
+
+                while (!messageQueue.IsEmpty)
+                {
+
+                    if (messageQueue.TryDequeue(out var dequeuedMessage))
+                    {
+
+                        lock (syncLock)
+                        {
+                            dequeuedMessage.WriteDelimitedTo(stream);
+
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"{e.Message} Client ID: {clientID}");
+                cancellationTokenSource.Cancel();
             }
         }
 
