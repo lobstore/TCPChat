@@ -56,11 +56,7 @@ namespace Client
             }
             catch (Exception)
             {
-
-
             }
-
-
         }
 
         public async Task SendMessageAsync(string? textToSend)

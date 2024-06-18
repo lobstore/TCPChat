@@ -11,7 +11,7 @@ namespace Server
         private TcpListener tcpListener;
         private ConcurrentDictionary<Guid, TcpClient> clients = new();
         private CancellationTokenSource cancellationTokenSource = new();
-        private readonly ConcurrentQueue<ServerMessage> messageQueue = new();
+
         private Timer? timer;
         #endregion 
         public Server(int port)
@@ -68,6 +68,7 @@ namespace Server
         {
             try
             {
+                ConcurrentQueue<ServerMessage> messageQueue = new();
                 NetworkStream stream = client.GetStream();
                 SendClientIdToClient(stream, clientID);
                 while (!cancellationTokenSource.Token.IsCancellationRequested)
@@ -89,10 +90,14 @@ namespace Server
                         Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
                         serverMessage.ChatMessage.ClientId = "Server";
                         messageQueue.Enqueue(serverMessage);
-                        if (messageQueue.TryDequeue(out var dequeuedMessage))
+                        Thread writeThread = new Thread(() =>
                         {
-                            dequeuedMessage.WriteDelimitedTo(stream);
-                        }
+                            if (messageQueue.TryDequeue(out var dequeuedMessage))
+                            {
+                                dequeuedMessage.WriteDelimitedTo(stream);
+                            }
+                        });
+                        writeThread.Start();
                     }
                 }
             }

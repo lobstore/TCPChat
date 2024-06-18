@@ -13,30 +13,29 @@
     <vm:MainViewModel />
   </Design.DataContext>
 	
-	<Grid RowDefinitions="Auto,Auto">
+	<Grid RowDefinitions="Auto,*">
 		<Rectangle Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="50"  Fill="#5BD2F0"></Rectangle>
 	<Grid Grid.Row="1" ShowGridLines="False"
 		  Margin="0 30"
 		  ColumnDefinitions="*,*,*"
-		  RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-		<Label Grid.Row="1" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top">Logs</Label>
+		  RowDefinitions="*,*,*,*">
+		<Label Grid.Row="0" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top">Logs</Label>
 		
-		<TextBox Text="{Binding TextBox1}" Name="textBox1" Margin="0 5" Grid.Row="1" Grid.Column="1" MinWidth="250" MaxWidth="800" Height="100"
+		<TextBox Text="{Binding TextBox1}" Name="textBox1" Margin="0 5" Grid.Row="0" Grid.Column="1" MinWidth="250" MaxWidth="800" MinHeight="100" MaxHeight="250"
 				IsReadOnly="True" Focusable="False" TextAlignment="Left" TextWrapping="Wrap"
 				 BorderThickness="0" Background="White"></TextBox>
 		
-		<Label Grid.Row="2" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top" >Income Message</Label>
-		<TextBox Text="{Binding TextBox3}" Name="textBox3" Margin="0 5" Grid.Row="2" Grid.Column="1" MinWidth="250" MaxWidth="800" Height="100"
+		<Label Grid.Row="1" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top" >Income Message</Label>
+		<TextBox Text="{Binding TextBox3}" Name="textBox3" Margin="0 5" Grid.Row="1" Grid.Column="1" MinWidth="250" MaxWidth="800" MinHeight="100" MaxHeight="250"
 				IsReadOnly="True" Focusable="False" TextAlignment="Left" TextWrapping="Wrap" BorderThickness="0" Background="White"></TextBox>
 		
-		<Label Grid.Row="3" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top" >Message</Label>
-		<TextBox Text="{Binding TextBox2}" Margin="0 5" Grid.Row="3" Grid.Column="1" MinWidth="250" MaxWidth="800" Height="50"
+		<Label Grid.Row="2" Grid.Column="0" FontSize="20" HorizontalAlignment="Right" Margin="20 0" VerticalAlignment="Top" >Message</Label>
+		<TextBox Text="{Binding TextBox2}" Margin="0 5" Grid.Row="2" Grid.Column="1" MinWidth="250" MaxWidth="800" 
 				 TextAlignment="Left" KeyDown="MessageEnterPressed"
-				 TextWrapping="Wrap"
-				 Background="White" BorderThickness="0">
-    </TextBox>
+				 TextWrapping="Wrap" MinHeight="50" MaxHeight="250"
+				 Background="White" BorderThickness="0"></TextBox>
 		
-		<Button Margin="20" Grid.Row="4" Grid.Column="1"
+		<Button Margin="20" Grid.Row="3" Grid.Column="1"
 				HorizontalAlignment="Center" HorizontalContentAlignment="Center"
 				VerticalAlignment="Center" VerticalContentAlignment="Center"
 				Height="50" FontSize="24" FontWeight="Bold" 
