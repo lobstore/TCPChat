@@ -1,6 +1,5 @@
 ﻿using Google.Protobuf;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
@@ -30,8 +29,8 @@ namespace Client
                     {
                         await tcpServerConnection.ConnectAsync(ip, port);
                         stream = tcpServerConnection.GetStream();
-                        await SetKeepAlive();
-                        await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = "Connected..." }));
+                        SetKeepAlive();
+                        ErrorMessageRised?.Invoke(new ErrorMessage { Error = "Connected..." });
                         Task checkConnection = CheckConnection();
                         await ReceiveClientIdAsync();
                         await ReceiveMessagesAsync();
@@ -39,31 +38,26 @@ namespace Client
                     }
                     catch (Exception e)
                     {
-                        await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = e.Message }));
-
+                        ErrorMessageRised?.Invoke(new ErrorMessage { Error = e.Message });
                     }
                 }
                 else { break; }
         }
 
-        private async Task SetKeepAlive()
+        private void SetKeepAlive()
         {
+            if (stream == null) return;
             try
             {
-                await Task.Run(() =>
-                {
-                    stream.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                    stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 120);
-                    stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 2);
-                    stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 3);
-                });
-
-
+                stream.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 120);
+                stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 2);
+                stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 3);
             }
             catch (Exception)
             {
 
-       
+
             }
 
 
@@ -72,9 +66,9 @@ namespace Client
         public async Task SendMessageAsync(string? textToSend)
         {
 
-            if (stream == null || clientId == null || tcpServerConnection==null || !tcpServerConnection.Connected)
+            if (stream == null || clientId == null || tcpServerConnection == null || !tcpServerConnection.Connected)
             {
-                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"Client is not connected" }));
+                ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"Client is not connected" });
                 return;
             }
             try
@@ -92,12 +86,12 @@ namespace Client
                     await Task.Run(() => serverMessage.WriteDelimitedTo(stream));
                 }
             }
-            catch (Exception e )
+            catch (Exception e)
             {
-                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}" }));
+                ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}" });
 
             }
-            
+
         }
 
         private async Task CheckConnection()
@@ -106,13 +100,13 @@ namespace Client
             {
                 while (!cancellationTokenSource.IsCancellationRequested)
                 {
-                    if (tcpServerConnection == null || !tcpServerConnection.Connected || stream == null) 
-                    { 
+                    if (tcpServerConnection == null || !tcpServerConnection.Connected || stream == null)
+                    {
                         ErrorMessageRised?.Invoke(new ErrorMessage { Error = "Disconnected..." });
                         cancellationTokenSource.Cancel();
                         tcpServerConnection?.Close();
                     }
-                   await Task.Delay(2000);
+                    await Task.Delay(2000);
                 }
             });
         }
@@ -126,13 +120,13 @@ namespace Client
                 {
 
                     var response = await Task.Run(() => ServerMessage.Parser.ParseDelimitedFrom(stream));
-                    await ProcessIncomeMessage(response);
+                    ProcessIncomeMessage(response);
 
                 }
             }
             catch (IOException e)
             {
-                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}" }));
+                ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}" });
                 cancellationTokenSource.Cancel();
                 tcpServerConnection?.Close();
             }
@@ -144,26 +138,26 @@ namespace Client
             {
                 var clientIdMessage = await Task.Run(() => ServerMessage.Parser.ParseDelimitedFrom(stream));
                 clientId = clientIdMessage.ChatMessage.Content;
-                await ProcessIncomeMessage(clientIdMessage);
+                ProcessIncomeMessage(clientIdMessage);
             }
             catch (Exception e)
             {
-                await Task.Run(() => ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}\n" }));
+                ErrorMessageRised?.Invoke(new ErrorMessage { Error = $"{e.Message}\n" });
                 cancellationTokenSource.Cancel();
                 tcpServerConnection?.Close();
             }
         }
 
-        private async Task ProcessIncomeMessage(ServerMessage message)
+        private void ProcessIncomeMessage(ServerMessage message)
         {
             if (message.ChatMessage != null)
             {
-                await Task.Run(() => MessageReceived?.Invoke(message.ChatMessage));
+                MessageReceived?.Invoke(message.ChatMessage);
 
             }
             else if (message.ErrorMessage != null)
             {
-                await Task.Run(() => ErrorMessageRised?.Invoke(message.ErrorMessage));
+                ErrorMessageRised?.Invoke(message.ErrorMessage);
             }
         }
     }

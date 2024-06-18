@@ -2,14 +2,17 @@
 {
     internal class Program
     {
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             Server server = new Server(30015);
             AppDomain.CurrentDomain.ProcessExit += (o, e) => server.Stop();
 
-            await server.Start();
+            server.Start();
 
+            Console.WriteLine("Press enter to stop server");
 
+            Console.ReadLine();
+            server.Stop();
         }
 
     }

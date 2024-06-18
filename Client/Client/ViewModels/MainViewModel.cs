@@ -1,7 +1,5 @@
-﻿using Avalonia.Threading;
-using ReactiveUI;
+﻿using ReactiveUI;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using TCPChat.Messages;
 
@@ -27,7 +25,7 @@ public class MainViewModel : ViewModelBase
     public string TextBox3
     {
         get { return textBox3; }
-        set { this.RaiseAndSetIfChanged(ref textBox3, value);}
+        set { this.RaiseAndSetIfChanged(ref textBox3, value); }
     }
     public MainViewModel()
     {
@@ -42,7 +40,7 @@ public class MainViewModel : ViewModelBase
     }
     private async void UpdateTextBox(ChatMessage message)
     {
-       await Task.Run(() => { TextBox3 += $"{message.ClientId}: {message.Content}\n"; });
+        await Task.Run(() => { TextBox3 += $"{message.ClientId}: {message.Content}\n"; });
     }
 
     public async void ConnectButtonClicked()
