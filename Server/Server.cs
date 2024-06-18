@@ -11,7 +11,7 @@ namespace Server
         private TcpListener tcpListener;
         private ConcurrentDictionary<Guid, TcpClient> clients = new();
         private CancellationTokenSource cancellationTokenSource = new();
-
+        private object syncLock = new object();
         private Timer? timer;
         #endregion 
         public Server(int port)
@@ -69,42 +69,53 @@ namespace Server
             try
             {
                 ConcurrentQueue<ServerMessage> messageQueue = new();
+
                 NetworkStream stream = client.GetStream();
                 SendClientIdToClient(stream, clientID);
                 while (!cancellationTokenSource.Token.IsCancellationRequested)
                 {
                     var serverMessage = new ServerMessage();
-                    ServerMessage? message = null;
-                    try
+                    Thread readThread = new Thread(() =>
                     {
-                        message = ServerMessage.Parser.ParseDelimitedFrom(stream);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine($"{e.Message} Client ID: {clientID}");
-                        break;
-                    }
-                    if (message != null)
-                    {
-                        serverMessage.ChatMessage = message.ChatMessage;
-                        Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
-                        serverMessage.ChatMessage.ClientId = "Server";
-                        messageQueue.Enqueue(serverMessage);
-                        Thread writeThread = new Thread(() =>
+                        ReadMessage(clientID, messageQueue, stream, serverMessage);
+                    });
+
+                    Thread writeThread = new Thread(() =>
                         {
-                            if (messageQueue.TryDequeue(out var dequeuedMessage))
+                            try
                             {
-                                dequeuedMessage.WriteDelimitedTo(stream);
+
+                                while (!messageQueue.IsEmpty)
+                                {
+
+                                    if (messageQueue.TryDequeue(out var dequeuedMessage))
+                                    {
+
+                                        lock (syncLock)
+                                        {
+                                            dequeuedMessage.WriteDelimitedTo(stream);
+
+                                        }
+                                    }
+                                }
                             }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine($"{e.Message} Client ID: {clientID}");
+                                cancellationTokenSource.Cancel();
+                            }
+
                         });
-                        writeThread.Start();
-                    }
+                    writeThread.Start();
+                    readThread.Start();
+                    readThread.Join();
+                    writeThread.Join();
                 }
             }
             catch (IOException e)
             {
                 Console.WriteLine($"{e.Message} Client ID: {clientID}");
-              
+
             }
             finally
             {
@@ -113,6 +124,33 @@ namespace Server
                 clients.TryRemove(clientID, out _);
             }
         }
+
+        private void ReadMessage(Guid clientID, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream, ServerMessage serverMessage)
+        {
+            ServerMessage? message = null;
+            try
+            {
+                lock (syncLock)
+                {
+                    message = ServerMessage.Parser.ParseDelimitedFrom(stream);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"{e.Message} Client ID: {clientID}");
+                cancellationTokenSource.Cancel();
+            }
+            if (message != null)
+            {
+
+                serverMessage.ChatMessage = message.ChatMessage;
+                Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
+                serverMessage.ChatMessage.ClientId = "Server";
+
+                messageQueue.Enqueue(serverMessage);
+            }
+        }
+
         private void SendClientIdToClient(NetworkStream stream, Guid clientId)
         {
             try
@@ -152,7 +190,9 @@ namespace Server
                         Content = DateTime.Now.ToString("o")
                     };
                     serverMessage.ChatMessage = timeMessage;
+
                     serverMessage.WriteDelimitedTo(stream);
+
                 }
                 catch (Exception ex)
                 {
