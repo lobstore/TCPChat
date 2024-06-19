@@ -1,6 +1,7 @@
 ﻿using Google.Protobuf;
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using TCPChat.Messages;
 namespace Server
@@ -10,9 +11,9 @@ namespace Server
         #region SetupVariables
         private TcpListener tcpListener;
         private ConcurrentDictionary<Guid, TcpClient> clients = new();
-        private CancellationTokenSource cancellationTokenSource = new();
-        private object syncLock = new object();
+
         private Timer? timer;
+        private bool isRunning = false;
         #endregion 
         public Server(int port)
         {
@@ -23,20 +24,18 @@ namespace Server
         {
             tcpListener.Start();
             Console.WriteLine("Server started. Waiting for connections...");
-
+            isRunning = true;
             timer = new Timer(SendServerTimeToClients, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
-            Thread run = new Thread(async () =>
+            Thread run = new Thread(() =>
             {
                 TcpClient? tcpClient = null;
-                try
-                {
-                    while (!cancellationTokenSource.Token.IsCancellationRequested)
+                    while (isRunning)
                     {
                         try
                         {
-                            tcpClient = await tcpListener.AcceptTcpClientAsync(cancellationTokenSource.Token);
+                            tcpClient = tcpListener.AcceptTcpClient();
                         }
-                        catch (SocketException e)
+                        catch (Exception e)
                         {
                             Console.WriteLine($"Server error: {e.Message}");
                             continue;
@@ -45,114 +44,94 @@ namespace Server
                         {
                             Guid clientId = Guid.NewGuid();
                             clients.TryAdd(clientId, tcpClient);
-                            Console.WriteLine($"Client connected: {tcpClient.Client.RemoteEndPoint} with id {clientId}");
-                            Thread clientThread = new Thread(() => { HandleClient(clients[clientId], clientId); });
-                            clientThread.Start();
+                            HandleClient(clients[clientId], clientId);
+
+
+                        }
+                    }
+            });
+            run.Start();
+        }
+
+        private void HandleClient(TcpClient client, Guid clientId)
+        {
+            try
+            {
+                CancellationTokenSource cancellationTokenSource = new();
+                ConcurrentQueue<ServerMessage> messageQueue = new();
+                NetworkStream stream = client.GetStream();
+                SendClientIdToClient(stream, clientId);
+                var serverMessage = new ServerMessage();
+                Thread readThread = new Thread(() =>
+                {
+                    ReadMessage(clientId, messageQueue, stream, serverMessage, cancellationTokenSource);
+                });
+
+                Thread writeThread = new Thread(() =>
+                {
+                    WriteMessage(clientId, messageQueue, stream, cancellationTokenSource);
+                });
+                writeThread.Start();
+                readThread.Start();
+                Console.WriteLine($"Client connected: {client.Client.RemoteEndPoint} with id {clientId}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"{e.Message} Client ID: {clientId}");
+                client.Close();
+                clients.TryRemove(clientId, out _);
+            }
+        }
+
+        private void WriteMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream, CancellationTokenSource cancellationTokenSource)
+        {
+            while (!cancellationTokenSource.IsCancellationRequested)
+            {
+                try
+                {
+                    while (!messageQueue.IsEmpty)
+                    {
+                        if (messageQueue.TryDequeue(out var dequeuedMessage))
+                        {
+                            dequeuedMessage.WriteDelimitedTo(stream);
                         }
                     }
                 }
                 catch (Exception e)
                 {
-
-                    Console.WriteLine($"Server error: {e.Message}");
+                    Console.WriteLine($"{e.Message} Client ID: {clientId}");
+                    TcpClient? tcpClient = null;
+                    clients.TryRemove(clientId, out tcpClient);
+                    tcpClient?.Close();
+                    cancellationTokenSource.Cancel();
                 }
-                finally
-                {
-                    tcpListener.Stop();
-                }
-            });
-            run.Start();
-        }
-
-        private void HandleClient(TcpClient client, Guid clientID)
-        {
-            try
-            {
-                ConcurrentQueue<ServerMessage> messageQueue = new();
-
-                NetworkStream stream = client.GetStream();
-                SendClientIdToClient(stream, clientID);
-                while (!cancellationTokenSource.Token.IsCancellationRequested)
-                {
-                    var serverMessage = new ServerMessage();
-                    Thread readThread = new Thread(() =>
-                    {
-                        ReadMessage(clientID, messageQueue, stream, serverMessage);
-                    });
-
-                    Thread writeThread = new Thread(() =>
-                    {
-                        WriteMessage(clientID, messageQueue, stream);
-
-                    });
-                    writeThread.Start();
-                    readThread.Start();
-                    readThread.Join();
-                    writeThread.Join();
-                }
-            }
-            catch (IOException e)
-            {
-                Console.WriteLine($"{e.Message} Client ID: {clientID}");
-
-            }
-            finally
-            {
-
-                client.Close();
-                clients.TryRemove(clientID, out _);
             }
         }
 
-        private void WriteMessage(Guid clientID, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream)
+        private void ReadMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream, ServerMessage serverMessage, CancellationTokenSource cancellationTokenSource)
         {
-            try
+            while (!cancellationTokenSource.IsCancellationRequested)
             {
-
-                while (!messageQueue.IsEmpty)
-                {
-
-                    if (messageQueue.TryDequeue(out var dequeuedMessage))
-                    {
-
-                        lock (syncLock)
-                        {
-                            dequeuedMessage.WriteDelimitedTo(stream);
-
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"{e.Message} Client ID: {clientID}");
-                cancellationTokenSource.Cancel();
-            }
-        }
-
-        private void ReadMessage(Guid clientID, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream, ServerMessage serverMessage)
-        {
-            ServerMessage? message = null;
-            try
-            {
-                lock (syncLock)
+                ServerMessage? message = null;
+                try
                 {
                     message = ServerMessage.Parser.ParseDelimitedFrom(stream);
                 }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"{e.Message} Client ID: {clientID}");
-                cancellationTokenSource.Cancel();
-            }
-            if (message != null)
-            {
-
-                serverMessage.ChatMessage = message.ChatMessage;
-                Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
-                serverMessage.ChatMessage.ClientId = "Server";
-
-                messageQueue.Enqueue(serverMessage);
+                catch (Exception e)
+                {
+                    Console.WriteLine($"{e.Message} Client ID: {clientId}");
+                    TcpClient? tcpClient = null;
+                    clients.TryRemove(clientId, out tcpClient);
+                    tcpClient?.Close();
+                    cancellationTokenSource.Cancel();
+                }
+                if (message != null)
+                {
+                    serverMessage.ChatMessage = message.ChatMessage;
+                    Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
+                    serverMessage.ChatMessage.ClientId = "Server";
+                    messageQueue.Enqueue(serverMessage);
+                }
             }
         }
 
@@ -169,10 +148,9 @@ namespace Server
                 serverMessage.ChatMessage = clientIdMessage;
                 serverMessage.WriteDelimitedTo(stream);
             }
-            catch (Exception)
+            catch (Exception e)
             {
-
-
+                Console.WriteLine($"{e.Message} Client ID: {clientId}");
             }
 
         }
@@ -209,7 +187,7 @@ namespace Server
 
         public void Stop()
         {
-            cancellationTokenSource.Cancel();
+            isRunning = false;
             timer?.Dispose();
             var lastMessage = new ErrorMessage
             {
