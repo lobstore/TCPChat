@@ -19,6 +19,7 @@ namespace Client
 
         public async Task ConnectToServerAsync(string ip = "127.0.0.1", int port = 30015)
         {
+            if (isRunning) return;
             isRunning = true;
             while (isRunning)
                 if (tcpServerConnection == null || !tcpServerConnection.Connected)

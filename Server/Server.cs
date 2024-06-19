@@ -83,7 +83,8 @@ namespace Server
             }
         }
 
-        private void WriteMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream, CancellationTokenSource cancellationTokenSource)
+        private void WriteMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, 
+                                  NetworkStream stream, CancellationTokenSource cancellationTokenSource)
         {
             while (!cancellationTokenSource.IsCancellationRequested)
             {
@@ -108,7 +109,8 @@ namespace Server
             }
         }
 
-        private void ReadMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream, ServerMessage serverMessage, CancellationTokenSource cancellationTokenSource)
+        private void ReadMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream, 
+                                 ServerMessage serverMessage, CancellationTokenSource cancellationTokenSource)
         {
             while (!cancellationTokenSource.IsCancellationRequested)
             {
