@@ -1,7 +1,6 @@
 ﻿using Google.Protobuf;
 using System.Collections.Concurrent;
 using System.Net;
-using System.Net.Http;
 using System.Net.Sockets;
 using TCPChat.Messages;
 namespace Server
@@ -29,26 +28,26 @@ namespace Server
             Thread run = new Thread(() =>
             {
                 TcpClient? tcpClient = null;
-                    while (isRunning)
+                while (isRunning)
+                {
+                    try
                     {
-                        try
-                        {
-                            tcpClient = tcpListener.AcceptTcpClient();
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine($"Server error: {e.Message}");
-                            continue;
-                        }
-                        if (tcpClient != null)
-                        {
-                            Guid clientId = Guid.NewGuid();
-                            clients.TryAdd(clientId, tcpClient);
-                            HandleClient(clients[clientId], clientId);
-
-
-                        }
+                        tcpClient = tcpListener.AcceptTcpClient();
                     }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Server error: {e.Message}");
+                        continue;
+                    }
+                    if (tcpClient != null)
+                    {
+                        Guid clientId = Guid.NewGuid();
+                        clients.TryAdd(clientId, tcpClient);
+                        HandleClient(clients[clientId], clientId);
+
+
+                    }
+                }
             });
             run.Start();
         }
@@ -83,7 +82,7 @@ namespace Server
             }
         }
 
-        private void WriteMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, 
+        private void WriteMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue,
                                   NetworkStream stream, CancellationTokenSource cancellationTokenSource)
         {
             while (!cancellationTokenSource.IsCancellationRequested)
@@ -109,7 +108,7 @@ namespace Server
             }
         }
 
-        private void ReadMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream, 
+        private void ReadMessage(Guid clientId, ConcurrentQueue<ServerMessage> messageQueue, NetworkStream stream,
                                  ServerMessage serverMessage, CancellationTokenSource cancellationTokenSource)
         {
             while (!cancellationTokenSource.IsCancellationRequested)
@@ -129,10 +128,23 @@ namespace Server
                 }
                 if (message != null)
                 {
-                    serverMessage.ChatMessage = message.ChatMessage;
-                    Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
-                    serverMessage.ChatMessage.ClientId = "Server";
-                    messageQueue.Enqueue(serverMessage);
+                    if (message.ChatMessage.Content == "close")
+                    {
+                        stream.Close();
+                        Console.WriteLine($"Client ID: {clientId} has closed connection");
+                        TcpClient? tcpClient = null;
+                        clients.TryRemove(clientId, out tcpClient);
+                        tcpClient?.Close();
+                        cancellationTokenSource.Cancel();
+                    }
+                    else
+                    {
+
+                        serverMessage.ChatMessage = message.ChatMessage;
+                        Console.WriteLine($"Received from {serverMessage.ChatMessage.ClientId}: {serverMessage.ChatMessage.Content}");
+                        serverMessage.ChatMessage.ClientId = "Server";
+                        messageQueue.Enqueue(serverMessage);
+                    }
                 }
             }
         }

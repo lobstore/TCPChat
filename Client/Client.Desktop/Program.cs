@@ -1,7 +1,11 @@
 ﻿using System;
-
+using Client.ViewModels;
 using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls;
 using Avalonia.ReactiveUI;
+using Client.Views;
+using System.ComponentModel.Design;
 
 namespace Client.Desktop;
 
@@ -21,4 +25,6 @@ class Program
             .WithInterFont()
             .LogToTrace()
             .UseReactiveUI();
+
+    
 }

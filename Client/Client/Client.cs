@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using TCPChat.Messages;
 namespace Client
 {
-    internal class Client
+    public class Client
     {
-        bool isRunning = false;
+        private bool isRunning = false;
         private CancellationTokenSource cancellationTokenSource = new();
         private TcpClient? tcpServerConnection;
         private NetworkStream? stream;
@@ -55,8 +55,9 @@ namespace Client
                 stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 2);
                 stream.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 3);
             }
-            catch (Exception)
+            catch (SocketException e)
             {
+                throw;
             }
         }
 
@@ -155,6 +156,17 @@ namespace Client
             else if (message.ErrorMessage != null)
             {
                 ErrorMessageRised?.Invoke(message.ErrorMessage);
+            }
+        }
+        public async void Stop()
+        {
+            if (isRunning)
+            {
+                await SendMessageAsync("close");
+                isRunning = false;
+                cancellationTokenSource.Cancel();
+                stream?.Close();
+                tcpServerConnection?.Close();
             }
         }
     }

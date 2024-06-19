@@ -7,7 +7,7 @@ namespace Client.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
-    readonly Client _client;
+    public Client _client;
     private string textBox1 = string.Empty;
     private string textBox2 = string.Empty;
     private string textBox3 = string.Empty;
